@@ -1,18 +1,10 @@
-import axios from 'axios';
 import * as Discord from 'discord.js';
 import ytsr from 'ytsr';
 
 import config from './config.json';
 import { DJ, CreateDJ } from './interfaces/dj';
-import { DJQueue } from './interfaces/djqueue';
 import { Song } from './interfaces/song';
 import { RedditRetriever, CreateRedditRetriever } from './interfaces/redditRetriever';
-import { checkServerIdentity } from 'tls';
-
-
-//------------------------------------------------------------------------------
-// Interfaces
-//------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
 // Data
