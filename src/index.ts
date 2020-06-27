@@ -1,7 +1,7 @@
 import * as Discord from 'discord.js';
 
 import config from './config.json';
-import { DJBotManager, CreateDJBotManager } from './botManagers/djBotManager';
+import { CreateDJBotManager } from './botManagers/djBotManager';
 import { CreateImageBotManager } from './botManagers/imageBotManager';
 import { BotManager } from './botManagers/botManager';
 import { ValidMessage } from './botManagers/validMessage';
