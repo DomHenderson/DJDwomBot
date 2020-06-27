@@ -23,7 +23,7 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 		this.helpBotCommands = new Map<string,Command<HelpBot>[]>([
 			['help', [new Command('help', listCommands(this.botManagers))]],
 			...(this.botManagers.map(
-				(b: BotManager): [string, Command<HelpBot>[]] => [`help${b.getBotName()}`, [new Command(`help${b.getBotName()}`, listCommands([b]))]]
+				(b: BotManager): [string, Command<HelpBot>[]] => [`help${b.getBotName().toLocaleLowerCase()}`, [new Command(`help${b.getBotName()}`, listCommands([b]))]]
 			))
 		]);
 	}

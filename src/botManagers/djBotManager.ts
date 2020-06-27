@@ -293,10 +293,10 @@ async function maxDuration(message: ValidMessage, dj: DJ): Promise<boolean> {
 }
 
 const djCommands: Map<string, Command<DJ>[]> = new Map<string,Command<DJ>[]>([
-	['getIn', [new Command('getIn', getIn)]],
-	['getInLad', [new Command('getInLad', getIn)]],
-	['getOut', [new Command('getOut', getOut)]],
-	['getOutLad', [new Command('getOutLad', getOut)]],
+	['getin', [new Command('getIn', getIn)]],
+	['getinlad', [new Command('getInLad', getIn)]],
+	['getout', [new Command('getOut', getOut)]],
+	['getoutLad', [new Command('getOutLad', getOut)]],
 	['add', [new Command('add', add, 1)]],
 	['play', [
 		new Command('play', play, 0, 0),
@@ -305,17 +305,17 @@ const djCommands: Map<string, Command<DJ>[]> = new Map<string,Command<DJ>[]>([
 	['pause', [new Command('pause', pause)]],
 	['stop', [new Command('stop', stop)]],
 	['skip', [new Command('skip', skip)]],
-	['printStatus', [new Command('printStatus', printStatus)]],
+	['printstatus', [new Command('printStatus', printStatus)]],
 	['volume', [
 		new Command('volume', volume, 0, 0),
 		new Command('volume <newVolume>', volume, 1)
 	]],
-	['maxVolume', [
+	['maxvolume', [
 		new Command('maxVolume', maxVolume, 0, 0),
 		new Command('maxVolume <newMaxVolume>', maxVolume, 1)
 	]],
 	['queue', [new Command('queue', printQueue)]],
-	['maxLength', [
+	['maxlength', [
 		new Command('maxLength', maxDuration, 0, 0),
 		new Command('maxLength <duration or "none">', maxDuration, 1)
 	]]
