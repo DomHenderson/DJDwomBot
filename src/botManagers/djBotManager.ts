@@ -6,7 +6,7 @@ import { BotManagerImpl, Command } from "./botManager";
 import { DJ, CreateDJ, Song, parseDuration, isValidDuration } from "../bots/dj";
 import * as Config  from '../config.json';
 import { ValidMessage } from './validMessage';
-import { DJSaveData, GuildDJSaveData, GuildDJRecord } from '../persistence/djSave';
+import { DJSaveData, GuildDJRecord } from '../persistence/djSave';
 import { Save, DJSave } from '../persistence/save';
 
 export function CreateDJBotManager(): DJBotManager {
@@ -75,14 +75,6 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 const prefix = Config.prefix;
 
 async function getIn(message: ValidMessage, dj: DJ): Promise<boolean> {
-	if (
-		message.content !== `${prefix}getIn` &&
-		message.content !== `${prefix}getInLad`
-	) {
-		message.channel.send('ERROR: incorrectly was about to get in');
-		return false;
-	}
-	
 	if (message.author === null) {
 		message.channel.send('Unable to determine who said to get in');
 		return false;
@@ -96,13 +88,6 @@ async function getIn(message: ValidMessage, dj: DJ): Promise<boolean> {
 }
 
 async function getOut(message: ValidMessage, dj: DJ): Promise<boolean> {
-	if (
-		message.content !== `${prefix}getOut` &&
-		message.content !== `${prefix}getOutLad`
-	) {
-		message.channel.send('ERROR: incorrectly was about to get out');
-		return false;
-	}
 	if(!dj.getCurrentVoiceChannel()) {
 		message.channel.send("I'm not currently in");
 		return true;
