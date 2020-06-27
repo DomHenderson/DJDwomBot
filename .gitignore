@@ -10,3 +10,5 @@ package-lock.json
 package.json
 
 src/config.json
+
+persistent.json
