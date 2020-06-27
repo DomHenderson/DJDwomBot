@@ -33,7 +33,7 @@ export abstract class BotManagerImpl<Bot> implements BotManager {
 	async giveMessage(message: ValidMessage): Promise<boolean|null> {
 		const bot: Bot = this.getBot(message);
 		const commands: Map<string, Command<Bot>[]> = this.getCommands();
-		const commandText: string = message.content.split(" ")[0].substr(prefix.length);
+		const commandText: string = message.content.split(" ")[0].substr(prefix.length).toLocaleLowerCase();
 		const potentialCommands: Command<Bot>[]|undefined = commands.get(commandText);
 
 		if(potentialCommands === undefined || potentialCommands.length === 0) {

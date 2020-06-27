@@ -38,7 +38,7 @@ client.once("disconnect", () => {
 
 client.on("message", async (message: Discord.Message) => {
 	if (message.author.bot) return;
-	if (!message.content.startsWith(prefix)) return;
+	if (!message.content.toLocaleLowerCase().startsWith(prefix)) return;
 	const messageGuild: Discord.Guild|null = message.guild;
 	if (messageGuild === null) {
 		console.log('Error: guild is null');
