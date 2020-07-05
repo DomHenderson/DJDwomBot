@@ -28,11 +28,19 @@ const botManagers: BotManager[] = [
 // Behaviour
 //------------------------------------------------------------------------------
 
-client.once("ready", () => {
+client.on("ready", () => {
 	console.log("Ready!");
 });
 
-client.once("disconnect", () => {
+client.on("debug", (info: string) => {
+	console.log(`debug: ${info}`);
+})
+
+client.on("message", (m: Discord.Message) => {
+	console.log(m.content);
+})
+
+client.on("disconnect", () => {
 	console.log("Disconnect!");
 });
 
