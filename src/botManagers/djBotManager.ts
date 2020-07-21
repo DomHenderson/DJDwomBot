@@ -1,6 +1,7 @@
 import * as Discord from 'discord.js';
 import fs from 'fs';
 import ytsr from 'ytsr';
+import moment from 'moment';
 
 import { BotManagerImpl, Command } from "./botManager";
 import { DJ, CreateDJ, Song, parseDuration, isValidDuration } from "../bots/dj";
@@ -277,6 +278,22 @@ async function maxDuration(message: ValidMessage, dj: DJ): Promise<boolean> {
 	}
 }
 
+async function gencon(message: ValidMessage, dj: DJ): Promise<boolean> {
+	const now = moment().valueOf();
+	const then = moment("2021-8-5").valueOf();
+	const actualDays = (then-now)/(1000*60*60*24);
+	const days = Math.floor(actualDays);
+	const actualHours = (actualDays-days)*24;
+	const hours = Math.floor(actualHours);
+	const actualMinutes = (actualHours-hours)*60;
+	const minutes = Math.floor(actualMinutes);
+	const actualSeconds = (actualMinutes-minutes)*60;
+	const seconds = Math.floor(actualSeconds);
+
+	message.channel.send(`GenCon day is ${days} days, ${hours} hours, ${minutes} minutes, and ${seconds} seconds from now`);
+	return true;
+}
+
 const djCommands: Map<string, Command<DJ>[]> = new Map<string,Command<DJ>[]>([
 	['getin', [new Command('getIn', getIn)]],
 	['getinlad', [new Command('getInLad', getIn)]],
@@ -303,5 +320,6 @@ const djCommands: Map<string, Command<DJ>[]> = new Map<string,Command<DJ>[]>([
 	['maxlength', [
 		new Command('maxLength', maxDuration, 0, 0),
 		new Command('maxLength <duration or "none">', maxDuration, 1)
-	]]
+	]],
+	['gencon', [new Command('gencon', gencon)]]
 ]);
