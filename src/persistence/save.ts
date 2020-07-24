@@ -1,20 +1,28 @@
 import fs from 'fs';
-import { DJSaveData } from "./djSave";
+import * as Config from '../config.json';
+import { DJSaveData } from './djSave';
 import { ImageBotSaveData } from './imageBotSave';
+import { ModBotSaveData } from './modBotSave';
 
 export interface Save {
-	dj: DJSaveData;
-	image: ImageBotSaveData;
+	DJ: DJSaveData;
+	Image: ImageBotSaveData;
+	Mod: ModBotSaveData;
 }
 
-export function DJSave (data: DJSaveData, path: string) {
-	const save: Save = JSON.parse(fs.readFileSync(path, {encoding: 'utf8'}));
-	save.dj = data;
-	fs.writeFileSync(path, JSON.stringify(save));
+export class GuildSaveData<T> {
+	constructor (
+		public guildId: string,
+		public data: T
+	) {}
 }
 
-export function ImageBotSave (data: ImageBotSaveData, path: string) {
-	const save: Save = JSON.parse(fs.readFileSync(path, {encoding: 'utf8'}));
-	save.image = data;
-	fs.writeFileSync(path, JSON.stringify(save));
+function GenericSave (updateSave: (s: Save) => void): void {
+	const save: Save = JSON.parse(fs.readFileSync(Config.saveFile, {encoding: 'utf8'}));
+	updateSave(save);
+	fs.writeFileSync(Config.saveFile, JSON.stringify(save));
 }
+
+export function DJSave (data: DJSaveData): void {GenericSave((s: Save) => {s.DJ = data;});}
+export function ImageBotSave (data: ImageBotSaveData): void {GenericSave((s: Save) => {s.Image = data;});}
+export function ModBotSave (data: ModBotSaveData): void {GenericSave((s: Save) => {s.Mod = data;});}

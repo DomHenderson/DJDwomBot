@@ -3,55 +3,57 @@ import fs from 'fs';
 import ytsr from 'ytsr';
 import moment from 'moment';
 
-import { BotManagerImpl, Command } from "./botManager";
-import { DJ, CreateDJ, Song, parseDuration, isValidDuration } from "../bots/dj";
-import * as Config  from '../config.json';
+import { CreateDJ, DJ, isValidDuration, parseDuration, Song } from '../bots/dj';
+import * as Config from '../config.json';
+import { DJSaveData, GuildDJSaveData } from '../persistence/djSave';
+import { DJSave, Save, GuildSaveData } from '../persistence/save';
+import { BotManagerImpl, InitialiseBotManager } from './botManager';
+import { ModGate } from './modGate';
+import { Command, PermissionLevel } from './command';
 import { ValidMessage } from './validMessage';
-import { DJSaveData, GuildDJRecord } from '../persistence/djSave';
-import { Save, DJSave } from '../persistence/save';
 
-export function CreateDJBotManager(): DJBotManager {
-	return new DJBotManager();
+export function CreateDJBotManager(modGate: ModGate): DJBotManager {
+	const djBotManager: DJBotManager = new DJBotManager();
+	InitialiseBotManager(djBotManager, modGate);
+	return djBotManager;
 }
 
 export class DJBotManager extends BotManagerImpl<DJ> {
 	loadPersistentData(): boolean {
 		try {
 			const save: Save = JSON.parse(fs.readFileSync(this.saveLocation, 'utf8'));
-			save.dj.guildDJs
-				.map((guildDJRecord: GuildDJRecord) => {
-					this.getOrCreateDJ(guildDJRecord.name).loadData(guildDJRecord.data)
-				});
+			save.DJ.guildDJs.map((guildDJRecord: GuildSaveData<GuildDJSaveData>): void => {
+				this.getOrCreateDJ(guildDJRecord.guildId).loadData(guildDJRecord.data);
+			});
 			return true;
 		} catch(e) {
 			console.log(e);
 			return false;
 		}
 	}
-	protected savePersistentData(): void {
+	savePersistentData(): void {
 		DJSave(
 			new DJSaveData(
 				[...this.djMap.entries()].map(([guildId, dj]: [string, DJ]) => {
-					return new GuildDJRecord(
+					console.log(`saving ${guildId}`);
+					return new GuildSaveData<GuildDJSaveData>(
 						guildId,
 						dj.saveData()
-					)
+					);
 				})
-			),
-			Config.saveFile
+			)
 		);
 		
 	}
 	constructor() {
 		super('DJ', Config.saveFile);
-		this.loadPersistentData();
 	}
 
 	protected getBot(message: ValidMessage): DJ {
 		return this.getOrCreateDJ(message.guild.id);
 	}
 
-	protected getCommands(): Map<string, Command<DJ>[]> {
+	protected getCommands(): Command<DJ>[] {
 		return djCommands;
 	}
 
@@ -60,9 +62,10 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 	}
 
 	private getOrCreateDJ(guildId: string): DJ {
-		let guildDJ: DJ|undefined = this.djMap.get(guildId);
+		const guildDJ: DJ|undefined = this.djMap.get(guildId);
 		if (guildDJ === undefined) {
 			const dj = CreateDJ();
+			dj.registerManager(this);
 			this.djMap.set(guildId, dj);
 			return dj;
 		}
@@ -70,10 +73,31 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 	}
 
 	private djMap: Map<string,DJ> = new Map<string,DJ>();
-	private save: DJSaveData = new DJSaveData();
 }
 
 const prefix = Config.prefix;
+const djCommands: Command<DJ>[] = [
+	new Command(['getin', 'getinlad'], getIn),
+	new Command(['getout', 'getoutlad'], getOut),
+	new Command(['add'], add, ['song'], 1),
+	new Command(['play'], play, [], 0, 0),
+	new Command(['play'], play, ['song'], 1),
+	new Command(['pause'], pause),
+	new Command(['stop'], stop),
+	new Command(['skip'], skip),
+	new Command(['clearqueue'], clearQueue, [], 0, Infinity, PermissionLevel.Mod),
+	new Command(['printstatus'], printStatus),
+	new Command(['volume'], volume, [], 0, 0),
+	new Command(['volume'], volume, ['newVolume'], 1),
+	new Command(['maxvolume'], maxVolume, [], 0, 0),
+	new Command(['maxvolume'], maxVolume, ['newMaxVolume'], 1, Infinity, PermissionLevel.Mod),
+	new Command(['queue'], printQueue),
+	new Command(['maxlength'], maxDuration, [], 0, 0),
+	new Command(['maxlength'], maxDuration, ['duration|"none"'], 1, Infinity, PermissionLevel.Mod),
+	new Command(['gencon'], gencon)
+];
+
+//------------------------------------------------------------------------------
 
 async function getIn(message: ValidMessage, dj: DJ): Promise<boolean> {
 	if (message.author === null) {
@@ -90,15 +114,15 @@ async function getIn(message: ValidMessage, dj: DJ): Promise<boolean> {
 
 async function getOut(message: ValidMessage, dj: DJ): Promise<boolean> {
 	if(!dj.getCurrentVoiceChannel()) {
-		message.channel.send("I'm not currently in");
+		message.channel.send('I\'m not currently in');
 		return true;
 	}
 	return dj.getOut();
 }
 
 async function findSongChoices(args: string[]): Promise<Song[]|null> {
-	const result: ytsr.result = await ytsr(args.join(" "));
-	console.log(`Searching for ${args.join(" ")} produced:`)
+	const result: ytsr.result = await ytsr(args.join(' '));
+	console.log(`Searching for ${args.join(' ')} produced:`);
 	console.log(result);
 	if(result.items.length === 0) {
 		console.log('No results were found');
@@ -129,11 +153,11 @@ async function chooseSong(message: ValidMessage, options: Song[]): Promise<Song|
 		.then((collected: Discord.Collection<string, Discord.Message>) => {
 			const response: Discord.Message|undefined = collected.first();
 			if(response === undefined) {
-				message.channel.send('Failed to catch response')
+				message.channel.send('Failed to catch response');
 				return null;
 			}
 			const choice: number = parseInt(response.content);
-			if (choice !== NaN) {
+			if (!isNaN(choice)) {
 				if(choice < 1 || choice > 5) {
 					message.channel.send(`${choice} is not in the range 1-5`);
 					return null;
@@ -149,7 +173,7 @@ async function chooseSong(message: ValidMessage, options: Song[]): Promise<Song|
 }
 
 async function add(message: ValidMessage, dj:DJ): Promise<boolean> {
-	const args: string[] = message.content.split(" ").slice(1);
+	const args: string[] = message.content.split(' ').slice(1);
 	if(args.length === 0) {
 		message.channel.send('Add what?');
 		return false;
@@ -169,7 +193,7 @@ async function add(message: ValidMessage, dj:DJ): Promise<boolean> {
 }
 
 async function play(message: ValidMessage, dj: DJ) {
-	const args: string[] = message.content.split(" ").slice(1);
+	const args: string[] = message.content.split(' ').slice(1);
 	if(args.length > 0) {
 		const songChoices: Song[]|null = await findSongChoices(args);
 		if(songChoices === null) {
@@ -210,12 +234,16 @@ async function skip(message: ValidMessage, dj: DJ): Promise<boolean> {
 	return dj.voteSkip(message.author.id, message.channel);
 }
 
+async function clearQueue(message: ValidMessage, dj: DJ): Promise<boolean> {
+	return dj.clearQueue(message.channel);
+}
+
 async function printStatus(message: ValidMessage, dj: DJ): Promise<boolean> {
 	return dj.printStatus(message.channel);
 }
 
 async function volume(message: ValidMessage, dj: DJ): Promise<boolean> {
-	const args: string[] = message.content.split(" ").slice(1);
+	const args: string[] = message.content.split(' ').slice(1);
 	if (args.length === 0) {
 		const v = dj.getVolume();
 		message.channel.send(`Current volume: ${v}`);
@@ -228,7 +256,7 @@ async function volume(message: ValidMessage, dj: DJ): Promise<boolean> {
 }
 
 async function maxVolume(message: ValidMessage, dj: DJ): Promise<boolean> {
-	const args: string[] = message.content.split(" ").slice(1);
+	const args: string[] = message.content.split(' ').slice(1);
 	if (args.length === 0) {
 		const v = dj.getVolumeLimit();
 		message.channel.send(`Max volume: ${v}`);
@@ -252,7 +280,7 @@ function durationToString(d: number): string {
 }
 
 async function maxDuration(message: ValidMessage, dj: DJ): Promise<boolean> {
-	const args: string[] = message.content.split(" ").slice(1);
+	const args: string[] = message.content.split(' ').slice(1);
 	if (args.length === 0) {
 		const m = dj.getMaxSongLength();
 		if(m === null) {
@@ -280,7 +308,7 @@ async function maxDuration(message: ValidMessage, dj: DJ): Promise<boolean> {
 
 async function gencon(message: ValidMessage, dj: DJ): Promise<boolean> {
 	const now = moment().valueOf();
-	const then = moment("2021-8-5").valueOf();
+	const then = moment('2021-8-5').valueOf();
 	const actualDays = (then-now)/(1000*60*60*24);
 	const days = Math.floor(actualDays);
 	const actualHours = (actualDays-days)*24;
@@ -293,33 +321,3 @@ async function gencon(message: ValidMessage, dj: DJ): Promise<boolean> {
 	message.channel.send(`GenCon day is ${days} days, ${hours} hours, ${minutes} minutes, and ${seconds} seconds from now`);
 	return true;
 }
-
-const djCommands: Map<string, Command<DJ>[]> = new Map<string,Command<DJ>[]>([
-	['getin', [new Command('getIn', getIn)]],
-	['getinlad', [new Command('getInLad', getIn)]],
-	['getout', [new Command('getOut', getOut)]],
-	['getoutLad', [new Command('getOutLad', getOut)]],
-	['add', [new Command('add', add, 1)]],
-	['play', [
-		new Command('play', play, 0, 0),
-		new Command('play <song>', play, 1)
-	]],
-	['pause', [new Command('pause', pause)]],
-	['stop', [new Command('stop', stop)]],
-	['skip', [new Command('skip', skip)]],
-	['printstatus', [new Command('printStatus', printStatus)]],
-	['volume', [
-		new Command('volume', volume, 0, 0),
-		new Command('volume <newVolume>', volume, 1)
-	]],
-	['maxvolume', [
-		new Command('maxVolume', maxVolume, 0, 0),
-		new Command('maxVolume <newMaxVolume>', maxVolume, 1)
-	]],
-	['queue', [new Command('queue', printQueue)]],
-	['maxlength', [
-		new Command('maxLength', maxDuration, 0, 0),
-		new Command('maxLength <duration or "none">', maxDuration, 1)
-	]],
-	['gencon', [new Command('gencon', gencon)]]
-]);

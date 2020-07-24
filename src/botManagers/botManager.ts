@@ -1,71 +1,103 @@
-import { prefix } from "../config.json";
-import { ValidMessage } from "./validMessage";
+import { Command, PermissionLevel, CommandPrototype } from './command';
+import { ModGate } from './modGate';
+import { ValidMessage } from './validMessage';
 
-export class Command<BotType> {
-	constructor(
-		public name: string,
-		public func: (m: ValidMessage, b: BotType) => Promise<boolean>,
-		public minArgs: number = 0,
-		public maxArgs: number = Infinity,
-		public modOnly: boolean = false
-	) {}
-}
 
 export interface BotManager {
 	giveMessage(m: ValidMessage): Promise<boolean|null>;
-	getCommandNames(): string[];
+	getCommandPrototypes(): CommandPrototype[];
 	getBotName(): string;
+	registerModGate(modGate: ModGate): void;
+	loadPersistentData(): boolean;
+	getMatchingCommandPrototype(message: ValidMessage): CommandPrototype|null;
+}
+
+export function InitialiseBotManager<T extends BotManager>(
+	manager: T,
+	modGate: ModGate
+): T {
+	modGate.registerBotManager(manager);
+	manager.registerModGate(modGate);
+	manager.loadPersistentData();
+	return manager;
 }
 
 export abstract class BotManagerImpl<Bot> implements BotManager {
-	constructor(botName: string, saveLocation: string) {
+	constructor(
+		botName: string,
+		saveLocation: string,
+	) {
 		this.botName = botName;
 		this.saveLocation = saveLocation;
+	}
+	registerModGate(modGate: ModGate): void {
+		this.modGate = modGate;
 	}
 	getBotName(): string {
 		return this.botName;
 	}
-	getCommandNames(): string[] {
-		return [...this.getCommands().values()]
-			.reduce((a: Command<Bot>[], v: Command<Bot>[]) => a.concat(v), [])
-			.map((c: Command<Bot>) => c.name);
+	getCommandPrototypes(): CommandPrototype[] {
+		return this.getCommands();
 	}
 	async giveMessage(message: ValidMessage): Promise<boolean|null> {
-		const bot: Bot = this.getBot(message);
-		const commands: Map<string, Command<Bot>[]> = this.getCommands();
-		const commandText: string = message.content.split(" ")[0].substr(prefix.length).toLocaleLowerCase();
-		const potentialCommands: Command<Bot>[]|undefined = commands.get(commandText);
+		//Find a command associated with the given text and number of arguments
+		const command: Command<Bot>|null = this.getMatchingCommand(message);
 
-		if(potentialCommands === undefined || potentialCommands.length === 0) {
+		//If no such command could be found, return null to indicate the message was not applicable
+		if (command === null) {
 			return null;
+		}
+
+		//If a mod gate has been registered, check if the user is allowed to call this command
+		const allowed: boolean = this.modGate?.check(message, command, this.getBotName()) ?? true;
+		
+		if (allowed) {
+			const bot: Bot = this.getBot(message);
+			const result = await command.func(message, bot);
+			this.savePersistentData();
+			return result;
 		} else {
-			const numArgs: number = message.content.split(" ").length - 1;
-			const matchingCommand: Command<Bot>|undefined = potentialCommands.find(
-				(command: Command<Bot>) => command.minArgs <= numArgs && numArgs <= command.maxArgs
-			);
-			if(matchingCommand === undefined) {
-				return null;
-			} else {
-				const result = await matchingCommand.func(message, bot);
-				this.savePersistentData();
-				return result;
-			}
+			message.channel.send(`<@${message.author.id}> you do not have the required permission for the ${message.commandText} command`);
+			return null;
 		}
 	}
 
-	public getCommandList(): string {
-		return [...this.getCommands().values()]
-			.reduce((a, v) => a.concat(v), [])
-			.map((c: Command<Bot>) => c.name)
-			.join('\n');
+	getMatchingCommandPrototype(message: ValidMessage): CommandPrototype|null {
+		return this.getMatchingCommand(message);
 	}
 
 	public abstract loadPersistentData(): boolean;
 	protected abstract savePersistentData(): void
 
 	protected abstract getBot(message: ValidMessage): Bot;
-	protected abstract getCommands(): Map<string, Command<Bot>[]>;
+	protected abstract getCommands(): Command<Bot>[];
+
+	private getMatchingCommand(message: ValidMessage): Command<Bot>|null {
+		//First match based on command text
+		const commandText: string = message.commandText;
+		const potentialCommands: Command<Bot>[] = this.matchCommandText(commandText);
+		if (potentialCommands.length === 0) {
+			return null;
+		}
+
+		//Next match based on the number of arguments
+		const numArgs = message.numArgs;
+		const matchingCommand: Command<Bot>|undefined = potentialCommands.find(
+			(command: Command<Bot>) => command.minArgs <= numArgs && numArgs <= command.maxArgs
+		);
+		if(matchingCommand === undefined) {
+			return null;
+		}
+
+		return matchingCommand;
+	}
+
+	private matchCommandText(s: string): Command<Bot>[] {
+		return this.getCommands()
+			.filter((c: Command<Bot>) => c.names.includes(s));
+	}
 
 	private botName: string;
 	protected saveLocation: string;
+	protected modGate: ModGate|null = null;
 }

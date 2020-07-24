@@ -1,15 +1,9 @@
-import { Song } from "../bots/dj";
+import { Song } from '../bots/dj';
+import { GuildSaveData } from './save';
 
 export class DJSaveData {
 	constructor(
-		public guildDJs: GuildDJRecord[] = []
-	) {}
-}
-
-export class GuildDJRecord {
-	constructor(
-		public name: string,
-		public data: GuildDJSaveData
+		public guildDJs: GuildSaveData<GuildDJSaveData>[] 
 	) {}
 }
 

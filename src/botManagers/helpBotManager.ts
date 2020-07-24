@@ -1,12 +1,17 @@
 
-import { BotManagerImpl, Command, BotManager } from "./botManager";
-import * as Config  from '../config.json';
 import { CreateHelpBot, HelpBot } from '../bots/helpBot';
-import { ValidMessage } from "./validMessage";
+import * as Config from '../config.json';
+import { BotManager, BotManagerImpl } from './botManager';
+import { ModGate } from './modGate';
+import { Command } from './command';
+import { ValidMessage } from './validMessage';
 
-export function CreateHelpBotManager(botManagers: BotManager[]): HelpBotManager {
-	const helpBot = CreateHelpBot();
-	return new HelpBotManager(helpBot, botManagers);
+export function CreateHelpBotManager(botManagers: BotManager[], modGate: ModGate): HelpBotManager {
+	const helpBot: HelpBot = CreateHelpBot();
+	const helpBotManager: HelpBotManager = new HelpBotManager(helpBot, botManagers);
+	modGate.registerBotManager(helpBotManager);
+	helpBotManager.registerModGate(modGate);
+	return helpBotManager;
 }
 
 export class HelpBotManager extends BotManagerImpl<HelpBot> {
@@ -14,26 +19,31 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 		return true;
 	}
 	protected savePersistentData(): void {
-		
+		return;
 	}
 	constructor(helpBot: HelpBot, botManagers: BotManager[]) {
 		super('Help', Config.saveFile);
 		this.helpBot = helpBot;
 		this.botManagers = [this, ...botManagers];
-		this.helpBotCommands = new Map<string,Command<HelpBot>[]>([
-			['help', [new Command('help', listCommands(this.botManagers))]],
-			...(this.botManagers.map(
-				(b: BotManager): [string, Command<HelpBot>[]] => [`help${b.getBotName().toLocaleLowerCase()}`, [new Command(`help${b.getBotName()}`, listCommands([b]))]]
-			))
-		]);
 	}
 
 	protected getBot(message: ValidMessage): HelpBot {
 		return this.helpBot;
 	}
 
-	protected getCommands(): Map<string, Command<HelpBot>[]> {
-		return this.helpBotCommands;
+	protected getCommands(): Command<HelpBot>[] {
+		const globalHelp: Command<HelpBot> = new Command(['help'], listCommands(this.botManagers, this.modGate));
+		const specificHelpCommands: Command<HelpBot>[] = this.botManagers
+			.map((botManager: BotManager): Command<HelpBot> => {
+				return new Command(
+					[`help${botManager.getBotName().toLocaleLowerCase()}`],
+					listCommands([botManager], this.modGate)
+				);
+			});
+		return [
+			globalHelp,
+			...specificHelpCommands
+		];
 	}
 
 	protected getPrefix(): string {
@@ -42,11 +52,10 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 
 	private helpBot: HelpBot;
 	private botManagers: BotManager[];
-	private helpBotCommands: Map<string, Command<HelpBot>[]>;
 }
 
-function listCommands(botManagers: BotManager[]): (m: ValidMessage, helpBot: HelpBot) => Promise<boolean> {
-	return async (m: ValidMessage, helpBot: HelpBot) => helpBot.listCommands(botManagers, m.channel);
+function listCommands(botManagers: BotManager[], modGate: ModGate|null): (m: ValidMessage, helpBot: HelpBot) => Promise<boolean> {
+	return async (m: ValidMessage, helpBot: HelpBot) => helpBot.listCommands(botManagers, m, modGate);
 }
 
 const prefix = Config.prefix;

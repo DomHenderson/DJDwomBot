@@ -1,22 +1,24 @@
 import fs from 'fs';
-
-import { BotManagerImpl, Command } from "./botManager";
-import * as Config  from '../config.json';
-import { ImageBot, CreateImageBot } from '../bots/imageBot';
+import { CreateImageBot, ImageBot } from '../bots/imageBot';
+import * as Config from '../config.json';
+import { ImageBotSave, Save } from '../persistence/save';
+import { BotManagerImpl, InitialiseBotManager } from './botManager';
+import { ModGate } from './modGate';
+import { Command } from './command';
 import { ValidMessage } from './validMessage';
-import { Save, ImageBotSave } from '../persistence/save';
-import { SubredditCache } from '../persistence/imageBotSave';
 
-export function CreateImageBotManager(): ImageBotManager {
-	const imBot = CreateImageBot();
-	return new ImageBotManager(imBot);
+
+export function CreateImageBotManager(modGate: ModGate): ImageBotManager {
+	const imageBotManager: ImageBotManager = new ImageBotManager();
+	InitialiseBotManager(imageBotManager, modGate);
+	return imageBotManager;
 }
 
 export class ImageBotManager extends BotManagerImpl<ImageBot> {
 	public loadPersistentData(): boolean {
 		try {
 			const save: Save = JSON.parse(fs.readFileSync(this.saveLocation, 'utf8'));
-			this.imBot.loadData(save.image);
+			this.imBot.loadData(save.Image);
 			return true;
 		} catch(e) {
 			console.log(e);
@@ -24,21 +26,18 @@ export class ImageBotManager extends BotManagerImpl<ImageBot> {
 		}
 	}
 	protected savePersistentData(): void {
-		ImageBotSave(
-			this.imBot.saveData(),
-			Config.saveFile
-		);
+		ImageBotSave(this.imBot.saveData());
 	}
-	constructor(imBot: ImageBot) {
+	constructor() {
 		super('Image', Config.saveFile);
-		this.imBot = imBot;
+		this.imBot = CreateImageBot();
 	}
 
 	protected getBot(): ImageBot {
 		return this.imBot;
 	}
 
-	protected getCommands(): Map<string, Command<ImageBot>[]> {
+	protected getCommands(): Command<ImageBot>[] {
 		return imBotCommands;
 	}
 
@@ -51,18 +50,18 @@ export class ImageBotManager extends BotManagerImpl<ImageBot> {
 
 const prefix = Config.prefix;
 
-const imBotCommands: Map<string, Command<ImageBot>[]> = new Map<string,Command<ImageBot>[]>([
-	['horse', [new Command('horse', getFromSubreddit('Horses'))]],
-	['pokemon', [new Command('pokemon', getFromSubreddit('ImaginaryKanto'))]],
-	['mushroom', [new Command('mushroom', getFromSubreddit('ShroomID'))]],
-	['cat', [new Command('cat', getFromSubreddit('cat'))]],
-	['cheese', [new Command('cheese', getFromSubreddit('cheese'))]],
-	['cheetah', [new Command('cheetah', getFromSubreddit('Cheetahs'))]],
-	['wall', [new Command('wall', getFromSubreddit('wall'))]],
-	['awoo', [new Command('awoo', getFromSubreddit('wolves'))]],
-	['teeth', [new Command('teeth', getFromLocal('teeth'))]],
-	['wind', [new Command('wind', getFromLocal('yall_hear_sumn'))]],
-]);
+const imBotCommands: Command<ImageBot>[] = [
+	new Command(['horse'], getFromSubreddit('Horses')),
+	new Command(['pokemon'], getFromSubreddit('ImaginaryKanto')),
+	new Command(['mushroom'], getFromSubreddit('ShroomID')),
+	new Command(['cat'], getFromSubreddit('cat')),
+	new Command(['cheese'], getFromSubreddit('cheese')),
+	new Command(['cheetah'], getFromSubreddit('Cheetahs')),
+	new Command(['wall'], getFromSubreddit('wall')),
+	new Command(['awoo'], getFromSubreddit('wolves')),
+	new Command(['teeth'], getFromLocal('teeth')),
+	new Command(['wind'], getFromLocal('yall_hear_sumn')),
+];
 
 function getFromLocal(imageName: string): (m: ValidMessage, imBot: ImageBot) => Promise<boolean> {
 	return async (m: ValidMessage, imBot: ImageBot) => {
@@ -74,7 +73,7 @@ function getFromLocal(imageName: string): (m: ValidMessage, imBot: ImageBot) => 
 			m.channel.send('', {files: [image]});
 			return true;
 		}
-	}
+	};
 }
 
 function getFromSubreddit(subredditName: string): (m: ValidMessage, imBot: ImageBot) => Promise<boolean> {
@@ -88,7 +87,7 @@ function getFromSubreddit(subredditName: string): (m: ValidMessage, imBot: Image
 				await m.channel.send('', {files: [image]});
 				return true;
 			} catch(e) {
-				m.channel.send("Failed to post image :'(");
+				m.channel.send('Failed to post image :\'(');
 				return false;
 			}
 		}

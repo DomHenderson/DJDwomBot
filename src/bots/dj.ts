@@ -1,8 +1,12 @@
-import * as Discord from 'discord.js'
+import * as Discord from 'discord.js';
+import { Readable } from 'stream';
 import ytdl from 'ytdl-core';
-
 import { MessageChannel } from '../botManagers/messageChannel';
-import { DJSaveData, GuildDJSaveData } from '../persistence/djSave';
+import { GuildDJSaveData } from '../persistence/djSave';
+
+declare class DJBotManager {
+	savePersistentData(): void;
+}
 
 export enum PlaybackStatus {
 	Playing,
@@ -15,7 +19,7 @@ export interface Song {
 	url: string;
 	length: string;
 	artist: string;
-};
+}
 
 export function parseDuration(s: string): number {
 	return s.split(':')
@@ -25,9 +29,7 @@ export function parseDuration(s: string): number {
 
 export function isValidDuration(d: string): boolean {
 	if(d === '') return false;
-	return d.split(':').reduce(
-		(a: boolean, v: string) => a && (parseInt(v) !== NaN), true
-	);
+	return d.split(':').every((n: string) => !isNaN(parseInt(n)));
 }
 
 export interface DJ {
@@ -42,6 +44,7 @@ export interface DJ {
 	stop(outputChannel: MessageChannel): boolean;
 	voteSkip(id: string, outputChannel: MessageChannel): boolean;
 	skip(outputChannel: MessageChannel): boolean;
+	clearQueue(outputChannel: MessageChannel): boolean;
 
 	printStatus(outputChannel: MessageChannel): boolean;
 	printQueue(outputChannel: MessageChannel): Promise<boolean>;
@@ -56,9 +59,14 @@ export interface DJ {
 
 	loadData(data: GuildDJSaveData): void;
 	saveData(): GuildDJSaveData;
+
+	registerManager(manager: DJBotManager): void;
 }
 
 class DJImpl implements DJ {
+	registerManager(manager: DJBotManager): void {
+		this.manager = manager;
+	}
 	loadData(data: GuildDJSaveData): void {
 		this.volume = data.volume;
 		this.volumeLimit = data.maxVolume;
@@ -104,7 +112,7 @@ class DJImpl implements DJ {
 			this.connection.disconnect();
 			this.connection = null;
 		} else {
-			console.log('connection is already null')
+			console.log('connection is already null');
 		}
 		return this.connection === null;
 	}
@@ -136,7 +144,7 @@ class DJImpl implements DJ {
 			return true;
 		} else if (this.playbackStatus === PlaybackStatus.Playing) {
 			if(this.dispatcher === null) {
-				outputChannel.send("I thought I was playing, but I can't find my dispatcher");
+				outputChannel.send('I thought I was playing, but I can\'t find my dispatcher');
 				this.playbackStatus = PlaybackStatus.Stopped;
 				return false;
 			}
@@ -144,7 +152,7 @@ class DJImpl implements DJ {
 			this.playbackStatus = PlaybackStatus.Paused;
 			return true;
 		} else {
-			outputChannel.send("I can't pause when I'm already stopped");
+			outputChannel.send('I can\'t pause when I\'m already stopped');
 			return false;
 		}
 	}
@@ -171,7 +179,7 @@ class DJImpl implements DJ {
 	voteSkip(id: string, outputChannel: MessageChannel): boolean {
 		this.votedToSkip.add(id);
 		if(this.connection === null) {
-			outputChannel.send("Canot conduct a vote when I'm not in a voice channel");
+			outputChannel.send('Canot conduct a vote when I\'m not in a voice channel');
 			return false;
 		}
 		const IDsInCall: string[] = this.connection.channel.members.keyArray();
@@ -214,8 +222,32 @@ class DJImpl implements DJ {
 			return this.streamCurrentSong(outputChannel);
 		}
 	}
+	clearQueue(outputChannel: MessageChannel): boolean {
+		if(this.playbackStatus === PlaybackStatus.Stopped) {
+			if(this.songList.length > 0 ) {
+				this.songList = [];
+			} else {
+				outputChannel.send('Queue is already empty');
+			}
+		} else {
+			if(this.dispatcher) {
+				this.dispatcher.end();
+				this.dispatcher = null;
+			} else {
+				outputChannel.send('Null dispatcher when not stopped');
+			}
+			if(this.songList.length > 0 ) {
+				this.songList = [];
+			} else {
+				outputChannel.send('Queue is already empty');
+			}
+			this.playbackStatus = PlaybackStatus.Stopped;
+			this.getOut();
+		}
+		return true;
+	}
 	printStatus(outputChannel: MessageChannel): boolean {
-		outputChannel.send(`Current track: ${this.songList.length > 0 ? this.songList[0].title : '-'}`)
+		outputChannel.send(`Current track: ${this.songList.length > 0 ? this.songList[0].title : '-'}`);
 		outputChannel.send(`Current playback status: ${this.playbackStatus}`);
 		outputChannel.send(`Current dispatcher status: ${this.dispatcher ? 'existant' : 'null'}`);
 		if(this.dispatcher) outputChannel.send(`Total dispatcher stream time: ${this.dispatcher.totalStreamTime}`);
@@ -233,7 +265,6 @@ class DJImpl implements DJ {
 			return true;
 		}
 	}
-
 	getVolume(): number {
 		return this.volume;
 	}
@@ -242,7 +273,7 @@ class DJImpl implements DJ {
 	}
 	setVolume(v: number, outputChannel: MessageChannel): void {
 		if( v < 0 ) {
-			outputChannel.send("Can't set volume to negative value");
+			outputChannel.send('Can\'t set volume to negative value');
 			this.volume = 0;
 		} else if ( v > this.volumeLimit) {
 			outputChannel.send(`Volume limit is set at ${this.volumeLimit}`);
@@ -255,7 +286,6 @@ class DJImpl implements DJ {
 			this.dispatcher.setVolumeLogarithmic(this.volume/this.volumeScaleFactor);
 		}
 	}
-
 	setVolumeLimit(v: number, outputChannel: MessageChannel): void {
 		if(v > 100) {
 			outputChannel.send('WARNING: setting volume limit above 100');
@@ -275,11 +305,9 @@ class DJImpl implements DJ {
 			outputChannel.send(`Volume lowered to ${v}`);
 		}
 	}
-
 	getMaxSongLength(): number|null {
 		return this.maxSongLength;
 	}
-
 	setMaxSongLength(length: number|null) {
 		this.maxSongLength = length;
 		if(length !== null) {
@@ -287,10 +315,9 @@ class DJImpl implements DJ {
 				const l: number = parseDuration(s.length);
 				console.log(`${s.length} -> ${l}`);
 				return l <= length;
-			})
+			});
 		}
 	}
-
 	private streamCurrentSong(outputChannel: MessageChannel): boolean {
 		if (this.connection === null) {
 			outputChannel.send('No voice connection, cannot play');
@@ -306,17 +333,18 @@ class DJImpl implements DJ {
 
 		this.dispatcher = this.connection
 			.play(ytdl(currentSong.url, {highWaterMark: 1024*1024*10}))
-			.on("debug", (info: string) => {console.log(`    debug: ${info}`);})
-			.on("close", () => {console.log('close');})
-			.on("pipe", (src: any) => console.log('pipe'))
-			.on("start", () => console.log('start'))
-			.on("unpipe", (src: any) =>console.log('unpipe'))
-			.on("volumeChange", (oldV: number, newV: number) => console.log(`volume change ${oldV} -> ${newV}`))
-			.on("finish", () => {
+			.on('debug', (info: string) => {console.log(`    debug: ${info}`);})
+			.on('close', () => {console.log('close');})
+			.on('pipe', (src: Readable) => console.log('pipe'))
+			.on('start', () => console.log('start'))
+			.on('unpipe', (src: Readable) =>console.log('unpipe'))
+			.on('volumeChange', (oldV: number, newV: number) => console.log(`volume change ${oldV} -> ${newV}`))
+			.on('finish', () => {
 				console.log('Finished song');
 				console.log(`Stream time ${this.dispatcher?.streamTime}`);
 				this.songList.shift();
 				this.votedToSkip = new Set<string>();
+				this.manager?.savePersistentData();
 				if(this.songList.length === 0) {
 					console.log('No songs left');
 					this.getOut();
@@ -326,7 +354,7 @@ class DJImpl implements DJ {
 					this.streamCurrentSong(outputChannel);
 				}
 			})
-			.on("error", error => {
+			.on('error', error => {
 				console.error(error);
 				outputChannel.send('Encountered an error during playback');
 				this.getOut();
@@ -348,6 +376,7 @@ class DJImpl implements DJ {
 	private volumeLimit: number = 100;
 	private votedToSkip: Set<string> = new Set<string>();
 	private maxSongLength: number|null = null;
+	private manager: DJBotManager|null = null;
 }
 
 export function CreateDJ(): DJ {

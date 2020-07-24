@@ -1,9 +1,7 @@
 import axios from 'axios';
-import fs from 'fs';
-
 import * as Config from '../config.json';
-import { Message } from 'discord.js';
 import { ImageBotSaveData, SubredditCache } from '../persistence/imageBotSave';
+import { RedditPost, RedditResponse } from './redditResponse';
 
 export interface ImageBot {
 	getFromLocal(name: string): Promise<string|null>;
@@ -15,23 +13,21 @@ export interface ImageBot {
 class ImageBotImpl implements ImageBot {
 	loadData(data: ImageBotSaveData): void {
 		this.cache = new Map<string, string[]> (
-			data.cache.map(
-				(subredditCache: SubredditCache) => {
-					return [subredditCache.name, subredditCache.links];
-				}
-			)
+			data.cache.map((subredditCache: SubredditCache) => {
+				return [subredditCache.name, subredditCache.links];
+			})
 		);
 	}
 	saveData(): ImageBotSaveData {
 		return new ImageBotSaveData(
 			[...this.cache.entries()].map(
 				(([name, links]: [string, string[]]) => {
-					return new SubredditCache(name, links)
+					return new SubredditCache(name, links);
 				})
 			)
 		);
 	}
-	async getFromLocal(name: string): Promise<string | null> {
+	async getFromLocal(name: string): Promise<string|null> {
 		const imageLoc: string|undefined = ImageMap.get(name);
 		if(imageLoc === undefined) {
 			return null;
@@ -44,12 +40,12 @@ class ImageBotImpl implements ImageBot {
 		let options: string[];
 		if(cache === undefined) {
 			try {
-				const response: any = await axios.get(`https://www.reddit.com/r/${subredditName}/top.json?t=all&limit=500`);
+				const response: RedditResponse = await axios.get(`https://www.reddit.com/r/${subredditName}/top.json?t=all&limit=500`);
 				const imageLinks: string[] = response
 					.data
 					.data
 					.children
-					.map((child: any) => child.data.url)
+					.map((child: RedditPost) => child.data.url)
 					.filter(
 						(link: string) => link.endsWith('.jpg') ||
 							link.endsWith('.jpeg') ||
@@ -64,12 +60,12 @@ class ImageBotImpl implements ImageBot {
 		} else {
 			options = cache;
 		}
-		console.log(`cache size: ${options.length}`)
+		console.log(`cache size: ${options.length}`);
 		do {
 			const index: number = Math.floor(Math.random() * options.length);
 			const result = options[index];
 			try {
-				await axios.get(result)
+				await axios.get(result);
 				return result;
 			} catch(e) {
 				console.log(`removed ${result}`);
@@ -83,7 +79,7 @@ class ImageBotImpl implements ImageBot {
 	private cache: Map<string,string[]> = new Map<string,string[]>();
 }
 
-export function CreateImageBot() {
+export function CreateImageBot(): ImageBot {
 	return new ImageBotImpl();
 }
 
