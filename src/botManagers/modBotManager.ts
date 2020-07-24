@@ -191,7 +191,7 @@ function setPermission(botManagers: BotManager[]): (message: ValidMessage, modBo
 			const responseHeader: string = `Multiple commands match ${args[0]}:`;
 			const matchingCommandList: string = commands
 				.map((c: CommandPrototype, i: number): string => {
-					return `${i}. ${c.fullDescription}`;
+					return `${i+1}. ${c.fullDescription}`;
 				})
 				.join('\n');
 			const responseEnd: string = `Which number command were you referring to, ${m.author.toString()}?`;
@@ -222,7 +222,7 @@ function setPermission(botManagers: BotManager[]): (message: ValidMessage, modBo
 			if(choice === null) {
 				return true;
 			}
-			b.setPermissionLevel(commands[choice], permissionLevel);
+			b.setPermissionLevel(commands[choice-1], permissionLevel);
 			return true;
 		}
 	};
