@@ -8,6 +8,7 @@ import { ValidMessage } from './botManagers/validMessage';
 import config from './config.json';
 import { MessageChannel } from './botManagers/messageChannel';
 import { validate } from './validation';
+import { CreateImitationBotManager } from './botManagers/imitationBotManager';
 
 
 //------------------------------------------------------------------------------
@@ -21,12 +22,14 @@ const prefix: string = config.prefix;
 const modBotManager = CreateModBotManager();
 const djBotManager = CreateDJBotManager(modBotManager);
 const imageBotManager = CreateImageBotManager(modBotManager);
-const helpBotManager = CreateHelpBotManager([djBotManager, imageBotManager, modBotManager], modBotManager);
+const imitationBotManager = CreateImitationBotManager(modBotManager);
+const helpBotManager = CreateHelpBotManager([djBotManager, imageBotManager, modBotManager, imitationBotManager], modBotManager);
 const botManagers: BotManager[] = [
 	djBotManager,
 	imageBotManager,
 	helpBotManager,
-	modBotManager
+	modBotManager,
+	imitationBotManager
 ];
 
 //------------------------------------------------------------------------------
@@ -37,9 +40,9 @@ client.on('ready', () => {
 	console.log('Ready!');
 });
 
-client.on('debug', (info: string) => {
-	console.log(`debug: ${info}`);
-});
+// client.on('debug', (info: string) => {
+// 	console.log(`debug: ${info}`);
+// });
 
 client.on('disconnect', () => {
 	console.log('Disconnect!');
@@ -64,7 +67,9 @@ client.on('message', async (message: Discord.Message) => {
 });
 
 if(validate(botManagers)) {
-	client.login(token);
+	client.login(token).then(() => {
+		imitationBotManager.registerGuilds(client.guilds);
+	});
 } else {
 	console.log('-----Validation failed-----');
 }
