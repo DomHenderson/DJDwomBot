@@ -73,6 +73,6 @@ async function imitate(message: ValidMessage, bot: ImitationBot): Promise<boolea
 	const mentions = [...message.mentions.users.values()];
 	const user = (mentions.length === 0) ? message.author.user : mentions[0];
 	const generatedMessage: string = await bot.imitate(user);
-	message.channel.send(`My impressions of ${message.author.user.toString()}:\n${generatedMessage}`);
+	message.channel.send(`My impressions of ${user.toString()}:\n${generatedMessage}`);
 	return true;
 }
