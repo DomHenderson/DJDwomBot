@@ -23,28 +23,44 @@ export class ImitationBot {
             .flatMap((guild: Discord.Guild): Discord.Channel[] => {
                 return [...guild.channels.cache.values()];
             })
-            .map((channel: Discord.Channel): Promise<string[]> => {
-                    if(channel instanceof Discord.TextChannel) {
-                        console.log(`Reading channel ${channel.name}`);
-                        return channel.messages.fetch({limit: 100})
-                            .then((collection: Discord.Collection<string, Discord.Message>): string[] => {
-                                const messages = [...collection.values()];
-                                const userMessages = messages
-                                    .filter((m: Discord.Message): boolean => {
-                                        return m.author.id === user.id;
-                                    });
-                                const messageContents = userMessages
-                                    .map((m: Discord.Message): string => {
-                                        return m.content;
-                                    })
-                                return messageContents;
-                            })
-                            .catch((): string[] => {
-                                return [];
-                            });
-                    } else {
-                        return Promise.resolve([]);
+            .map(async (channel: Discord.Channel): Promise<string[]> => {
+                if(channel instanceof Discord.TextChannel) {
+                    console.log(`Reading channel ${channel.name}`);
+                    const sum_messages: string[] = [];
+                    let last_id: string|undefined = undefined;
+                    let total: number = 0;
+                    while(sum_messages.length < 500 && total < 10000) {
+                        console.log(sum_messages.length);
+                        const options: Discord.ChannelLogsQueryOptions = {limit: 100, before: undefined};
+                        if(last_id !== undefined) {
+                            options.before = last_id;
+                        }
+
+                        try {
+                            const messageCollection = await channel.messages.fetch(options);
+                            total += messageCollection.size;
+                            const last = messageCollection.last();
+                            if(last === undefined) {
+                                break;
+                            }
+                            last_id = last.id;
+                            const userMessages = [...messageCollection.values()]
+                                .filter((m: Discord.Message): boolean => {
+                                    return m.author.id === user.id;
+                                });
+                            const messageContents = userMessages
+                                .map((m: Discord.Message): string => {
+                                    return m.content;
+                                })
+                            sum_messages.push(...messageContents);
+                        } catch (e) {
+                            break;
+                        }
                     }
+                    return sum_messages;
+                } else {
+                    return Promise.resolve([]);
+                }
             }))
             .then((byGuild: string[][]): string[] => {
                 return byGuild.flat();
