@@ -46,6 +46,7 @@ export class ImitationBotManager extends BotManagerImpl<ImitationBot> {
 
 	registerGuilds(guilds: Discord.GuildManager): void {
 		console.log(`Guild count: ${guilds.cache.size}`);
+		console.log([...guilds.cache.entries()]);
 		this.bot = new ImitationBot([...guilds.cache.values()])
 	}
 
@@ -63,12 +64,15 @@ export class ImitationBotManager extends BotManagerImpl<ImitationBot> {
 
     private bot: ImitationBot;
     private commands: Command<ImitationBot>[] = [
-        new Command(['imitate'], imitate)
+		new Command(['imitate'], imitate, [], 0, 0),
+		new Command(['imitate'], imitate, ['@target'], 1)
     ];
 }
 
 async function imitate(message: ValidMessage, bot: ImitationBot): Promise<boolean> {
-	const generatedMessage: string = await bot.imitate(message.author.user);
+	const mentions = [...message.mentions.users.values()];
+	const user = (mentions.length === 0) ? message.author.user : mentions[0];
+	const generatedMessage: string = await bot.imitate(user);
 	message.channel.send(`My impressions of ${message.author.user.toString()}:\n${generatedMessage}`);
 	return true;
 }

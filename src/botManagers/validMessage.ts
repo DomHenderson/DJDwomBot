@@ -8,6 +8,7 @@ export class ValidMessage {
 		public guild: Discord.Guild,
 		public channel: MessageChannel,
 		public author: Discord.GuildMember,
+		public mentions: Discord.MessageMentions
 	) {}
 
 	get commandText(): string {

@@ -29,18 +29,16 @@ export class ImitationBot {
                     const sum_messages: string[] = [];
                     let last_id: string|undefined = undefined;
                     let total: number = 0;
-                    while(sum_messages.length < 500 && total < 10000) {
-                        console.log(sum_messages.length);
-                        const options: Discord.ChannelLogsQueryOptions = {limit: 100, before: undefined};
-                        if(last_id !== undefined) {
-                            options.before = last_id;
-                        }
+                    while(sum_messages.length < 500 && total < 2000) {
+                        console.log(`${channel.name}: ${sum_messages.length}/${total}`);
+                        const options: Discord.ChannelLogsQueryOptions = {limit: 100, before: last_id};
 
                         try {
                             const messageCollection = await channel.messages.fetch(options);
                             total += messageCollection.size;
                             const last = messageCollection.last();
                             if(last === undefined) {
+                                console.log('last undefined');
                                 break;
                             }
                             last_id = last.id;
@@ -57,6 +55,7 @@ export class ImitationBot {
                             break;
                         }
                     }
+                    console.log(`${channel.name} finished with ${sum_messages.length} messages out of ${total}`);
                     return sum_messages;
                 } else {
                     return Promise.resolve([]);

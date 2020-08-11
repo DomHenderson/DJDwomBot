@@ -104,7 +104,8 @@ function validateMessage(message: Discord.Message): ValidMessage|null {
 		message.content,
 		messageGuild,
 		message.channel,
-		messageAuthor
+		messageAuthor,
+		message.mentions
 	);
 }
 
