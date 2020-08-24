@@ -1,7 +1,12 @@
+import os from 'os';
+
 import { BotManager } from './botManagers/botManager';
 import { CommandPrototype } from './botManagers/command';
 
 export function validate(botManagers: BotManager[]): boolean {
+	
+	console.log(`OS: ${os.platform()}`);
+
 	const commandList: CommandPrototype[] = botManagers
 		.map((botManager: BotManager): CommandPrototype[] => botManager.getCommandPrototypes())
 		.flat();

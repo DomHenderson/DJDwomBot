@@ -1,3 +1,4 @@
+import os from 'os';
 import * as Discord from 'discord.js';
 import fs from 'fs';
 import ytsr from 'ytsr';
@@ -11,6 +12,7 @@ import { BotManagerImpl, InitialiseBotManager } from './botManager';
 import { ModGate } from './modGate';
 import { Command, PermissionLevel } from './command';
 import { ValidMessage } from './validMessage';
+import { config } from 'process';
 
 export function CreateDJBotManager(modGate: ModGate): DJBotManager {
 	const djBotManager: DJBotManager = new DJBotManager();
@@ -43,10 +45,9 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 				})
 			)
 		);
-		
 	}
 	constructor() {
-		super('DJ', Config.saveFile);
+		super('DJ', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
 	}
 
 	protected getBot(message: ValidMessage): DJ {

@@ -1,4 +1,4 @@
-
+import os from 'os';
 import { CreateHelpBot, HelpBot } from '../bots/helpBot';
 import * as Config from '../config.json';
 import { BotManager, BotManagerImpl } from './botManager';
@@ -22,7 +22,7 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 		return;
 	}
 	constructor(helpBot: HelpBot, botManagers: BotManager[]) {
-		super('Help', Config.saveFile);
+		super('Help', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
 		this.helpBot = helpBot;
 		this.botManagers = [this, ...botManagers];
 	}

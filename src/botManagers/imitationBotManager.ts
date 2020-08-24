@@ -1,3 +1,4 @@
+import os from 'os';
 import * as Discord from 'discord.js';
 import * as Config from '../config.json';
 import { BotManagerImpl, InitialiseBotManager } from './botManager';
@@ -40,7 +41,7 @@ export class ImitationBotManager extends BotManagerImpl<ImitationBot> {
 		// );
 	}
 	constructor() {
-        super('Imitation', Config.saveFile);
+        super('Imitation', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
 		this.bot = new ImitationBot([]);
 	}
 

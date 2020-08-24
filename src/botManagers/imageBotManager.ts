@@ -1,3 +1,4 @@
+import os from 'os';
 import fs from 'fs';
 import { CreateImageBot, ImageBot } from '../bots/imageBot';
 import * as Config from '../config.json';
@@ -29,7 +30,7 @@ export class ImageBotManager extends BotManagerImpl<ImageBot> {
 		ImageBotSave(this.imBot.saveData());
 	}
 	constructor() {
-		super('Image', Config.saveFile);
+		super('Image', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
 		this.imBot = CreateImageBot();
 	}
 

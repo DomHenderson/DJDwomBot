@@ -1,3 +1,4 @@
+import os from 'os';
 import * as Discord from 'discord.js';
 import fs from 'fs';
 import { CreateModBot, ModBot } from '../bots/modBot';
@@ -95,7 +96,7 @@ export class ModBotManager extends BotManagerImpl<ModBot> implements ModGate {
 		);
 	}
 	constructor() {
-		super('Mod', Config.saveFile);
+		super('Mod', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
 		this.botManagers = [this];
 	}
 	
