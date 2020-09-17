@@ -21,13 +21,14 @@ export interface ModBot {
 
 class ModBotImpl implements ModBot {
 	loadData(data: GuildModSaveData): void {
+		console.log(`data.permissions: ${data.permissions} (${typeof data.permissions})`);
 		this.permissions = new Map<CommandPrototype, PermissionLevel>(data.permissions);
 		this.modRoles = data.modRoles;
 		this.restrictedBots = data.restrictedBots;
 	}
 	saveData(): GuildModSaveData {
 		return new GuildModSaveData(
-			this.permissions,
+			[...this.permissions.entries()],
 			this.modRoles,
 			this.restrictedBots
 		);

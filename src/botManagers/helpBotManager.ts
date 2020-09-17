@@ -1,6 +1,6 @@
 import os from 'os';
 import { CreateHelpBot, HelpBot } from '../bots/helpBot';
-import * as Config from '../config.json';
+import { Config } from '../config';
 import { BotManager, BotManagerImpl } from './botManager';
 import { ModGate } from './modGate';
 import { Command } from './command';
@@ -22,7 +22,7 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 		return;
 	}
 	constructor(helpBot: HelpBot, botManagers: BotManager[]) {
-		super('Help', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
+		super('Help', Config.GetSaveFilePath());
 		this.helpBot = helpBot;
 		this.botManagers = [this, ...botManagers];
 	}
@@ -47,7 +47,7 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 	}
 
 	protected getPrefix(): string {
-		return prefix;
+		return Config.GetCommandPrefix();
 	}
 
 	private helpBot: HelpBot;
@@ -57,6 +57,3 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 function listCommands(botManagers: BotManager[], modGate: ModGate|null): (m: ValidMessage, helpBot: HelpBot) => Promise<boolean> {
 	return async (m: ValidMessage, helpBot: HelpBot) => helpBot.listCommands(botManagers, m, modGate);
 }
-
-const prefix = Config.prefix;
-

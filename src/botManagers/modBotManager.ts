@@ -2,7 +2,7 @@ import os from 'os';
 import * as Discord from 'discord.js';
 import fs from 'fs';
 import { CreateModBot, ModBot } from '../bots/modBot';
-import * as Config from '../config.json';
+import { Config } from '../config';
 import { GuildModSaveData, ModBotSaveData } from '../persistence/modBotSave';
 import { GuildSaveData, ModBotSave, Save } from '../persistence/save';
 import { BotManager, BotManagerImpl, InitialiseBotManager } from './botManager';
@@ -96,7 +96,7 @@ export class ModBotManager extends BotManagerImpl<ModBot> implements ModGate {
 		);
 	}
 	constructor() {
-		super('Mod', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
+		super('Mod', Config.GetSaveFilePath());
 		this.botManagers = [this];
 	}
 	
@@ -116,7 +116,7 @@ export class ModBotManager extends BotManagerImpl<ModBot> implements ModGate {
 	}
 
 	protected getPrefix(): string {
-		return prefix;
+		return Config.GetCommandPrefix();
 	}
 
 	private getOrCreateModBot(guildId: string): ModBot {
@@ -153,8 +153,6 @@ export class ModBotManager extends BotManagerImpl<ModBot> implements ModGate {
 	private botManagers: BotManager[];
 	private modBots: Map<string, ModBot> = new Map<string, ModBot>();
 }
-
-const prefix = Config.prefix;
 
 function setPermission(botManagers: BotManager[]): (message: ValidMessage, modBot: ModBot) => Promise<boolean> {
 	return async (m: ValidMessage, b: ModBot): Promise<boolean> => {

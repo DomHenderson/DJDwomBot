@@ -2,17 +2,15 @@ import os from 'os';
 import * as Discord from 'discord.js';
 import fs from 'fs';
 import ytsr from 'ytsr';
-import moment from 'moment';
 
 import { CreateDJ, DJ, isValidDuration, parseDuration, Song } from '../bots/dj';
-import * as Config from '../config.json';
+import { Config } from '../config';
 import { DJSaveData, GuildDJSaveData } from '../persistence/djSave';
 import { DJSave, Save, GuildSaveData } from '../persistence/save';
 import { BotManagerImpl, InitialiseBotManager } from './botManager';
 import { ModGate } from './modGate';
 import { Command, PermissionLevel } from './command';
 import { ValidMessage } from './validMessage';
-import { config } from 'process';
 
 export function CreateDJBotManager(modGate: ModGate): DJBotManager {
 	const djBotManager: DJBotManager = new DJBotManager();
@@ -47,7 +45,7 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 		);
 	}
 	constructor() {
-		super('DJ', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
+		super('DJ', Config.GetSaveFilePath());
 	}
 
 	protected getBot(message: ValidMessage): DJ {
@@ -59,7 +57,7 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 	}
 
 	protected getPrefix(): string {
-		return prefix;
+		return Config.GetCommandPrefix();
 	}
 
 	private getOrCreateDJ(guildId: string): DJ {
@@ -76,7 +74,6 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 	private djMap: Map<string,DJ> = new Map<string,DJ>();
 }
 
-const prefix = Config.prefix;
 const djCommands: Command<DJ>[] = [
 	new Command(['getin', 'getinlad'], getIn),
 	new Command(['getout', 'getoutlad'], getOut),
@@ -94,8 +91,7 @@ const djCommands: Command<DJ>[] = [
 	new Command(['maxvolume'], maxVolume, ['newMaxVolume'], 1, Infinity, PermissionLevel.Mod),
 	new Command(['queue'], printQueue),
 	new Command(['maxlength'], maxDuration, [], 0, 0),
-	new Command(['maxlength'], maxDuration, ['duration|"none"'], 1, Infinity, PermissionLevel.Mod),
-	new Command(['gencon'], gencon)
+	new Command(['maxlength'], maxDuration, ['duration|"none"'], 1, Infinity, PermissionLevel.Mod)
 ];
 
 //------------------------------------------------------------------------------
@@ -305,20 +301,4 @@ async function maxDuration(message: ValidMessage, dj: DJ): Promise<boolean> {
 			return false;
 		}
 	}
-}
-
-async function gencon(message: ValidMessage, dj: DJ): Promise<boolean> {
-	const now = moment().valueOf();
-	const then = moment('2021-8-5').valueOf();
-	const actualDays = (then-now)/(1000*60*60*24);
-	const days = Math.floor(actualDays);
-	const actualHours = (actualDays-days)*24;
-	const hours = Math.floor(actualHours);
-	const actualMinutes = (actualHours-hours)*60;
-	const minutes = Math.floor(actualMinutes);
-	const actualSeconds = (actualMinutes-minutes)*60;
-	const seconds = Math.floor(actualSeconds);
-
-	message.channel.send(`GenCon day is ${days} days, ${hours} hours, ${minutes} minutes, and ${seconds} seconds from now`);
-	return true;
 }

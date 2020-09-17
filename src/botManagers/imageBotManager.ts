@@ -1,7 +1,9 @@
 import os from 'os';
+import moment from 'moment';
 import fs from 'fs';
+import * as Discord from 'discord.js';
 import { CreateImageBot, ImageBot } from '../bots/imageBot';
-import * as Config from '../config.json';
+import { Config } from '../config';
 import { ImageBotSave, Save } from '../persistence/save';
 import { BotManagerImpl, InitialiseBotManager } from './botManager';
 import { ModGate } from './modGate';
@@ -19,6 +21,7 @@ export class ImageBotManager extends BotManagerImpl<ImageBot> {
 	public loadPersistentData(): boolean {
 		try {
 			const save: Save = JSON.parse(fs.readFileSync(this.saveLocation, 'utf8'));
+			console.log(save);
 			this.imBot.loadData(save.Image);
 			return true;
 		} catch(e) {
@@ -30,7 +33,7 @@ export class ImageBotManager extends BotManagerImpl<ImageBot> {
 		ImageBotSave(this.imBot.saveData());
 	}
 	constructor() {
-		super('Image', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
+		super('Image', Config.GetSaveFilePath());
 		this.imBot = CreateImageBot();
 	}
 
@@ -43,13 +46,11 @@ export class ImageBotManager extends BotManagerImpl<ImageBot> {
 	}
 
 	protected getPrefix(): string {
-		return prefix;
+		return Config.GetCommandPrefix();
 	}
 
 	private imBot: ImageBot;
 }
-
-const prefix = Config.prefix;
 
 const imBotCommands: Command<ImageBot>[] = [
 	new Command(['horse'], getFromSubreddit('Horses')),
@@ -61,7 +62,12 @@ const imBotCommands: Command<ImageBot>[] = [
 	new Command(['wall'], getFromSubreddit('wall')),
 	new Command(['awoo'], getFromSubreddit('wolves')),
 	new Command(['teeth'], getFromLocal('teeth')),
+	new Command(['sadteeth'], getFromLocal('sadteeth')),
 	new Command(['wind'], getFromLocal('yall_hear_sumn')),
+	new Command(['sir'], getFromLocal('sir')),
+	new Command(['registerselfcarechannel'], registerChannel('selfCare')),
+	new Command(['selfcare'], getFromPins('selfCare')),
+	new Command(['gencon'], gencon)
 ];
 
 function getFromLocal(imageName: string): (m: ValidMessage, imBot: ImageBot) => Promise<boolean> {
@@ -93,4 +99,43 @@ function getFromSubreddit(subredditName: string): (m: ValidMessage, imBot: Image
 			}
 		}
 	};
+}
+
+function registerChannel(channelName: string): (m: ValidMessage, imBot: ImageBot) => Promise<boolean> {
+	return async (m: ValidMessage, imBot: ImageBot) => {
+		const channelID = m.channel.id;
+		imBot.registerChannel(channelID, channelName);
+		return true;
+	}
+}
+
+function getFromPins(channelName: string): (m: ValidMessage, imBot: ImageBot) => Promise<boolean> {
+	return async (m: ValidMessage, imBot: ImageBot) => {
+		const mentions = [...m.mentions.users.values()];
+		const user = (mentions.length === 0) ? null : mentions[0];
+		const message: Discord.Message|null = await imBot.getFromPins(channelName, m.channel.client);
+		if(message === null) {
+			m.channel.send(`Unable to retrieve from ${channelName}`);
+			return false;
+		} else {
+			m.channel.send(`${message.content} ${(user === null) ? '' : user.toString()}`, [...message.attachments.values()]);
+			return true;
+		}
+	};
+}
+
+async function gencon(message: ValidMessage, imageBot: ImageBot): Promise<boolean> {
+	const now = moment().valueOf();
+	const then = moment('2021-8-5').valueOf();
+	const actualDays = (then-now)/(1000*60*60*24);
+	const days = Math.floor(actualDays);
+	const actualHours = (actualDays-days)*24;
+	const hours = Math.floor(actualHours);
+	const actualMinutes = (actualHours-hours)*60;
+	const minutes = Math.floor(actualMinutes);
+	const actualSeconds = (actualMinutes-minutes)*60;
+	const seconds = Math.floor(actualSeconds);
+
+	message.channel.send(`GenCon day is ${days} days, ${hours} hours, ${minutes} minutes, and ${seconds} seconds from now`);
+	return true;
 }

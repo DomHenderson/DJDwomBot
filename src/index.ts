@@ -1,5 +1,5 @@
 import * as Discord from 'discord.js';
-import { BotManager } from './botManagers/botManager';
+import { BotManager, Result } from './botManagers/botManager';
 import { CreateDJBotManager } from './botManagers/djBotManager';
 import { CreateHelpBotManager } from './botManagers/helpBotManager';
 import { CreateImageBotManager } from './botManagers/imageBotManager';
@@ -56,12 +56,12 @@ client.on('message', async (message: Discord.Message) => {
 	if(validMessage === null) return;
 
 	//Run the associated command
-	const successes: Promise<boolean|null>[] = botManagers.map(
+	const results: Promise<Result>[] = botManagers.map(
 		(botManager: BotManager) => botManager.giveMessage(validMessage)
 	);
 	
 	//Check success
-	Promise.all(successes)
+	Promise.all(results)
 		.then(evaluateSuccess)
 		.then(printSuccess(validMessage));
 });
@@ -109,23 +109,42 @@ function validateMessage(message: Discord.Message): ValidMessage|null {
 	);
 }
 
-function evaluateSuccess(values: (boolean|null)[]): boolean|null {
-	//If any bot managers returned false, a task failed
-	if(values.some((v: boolean|null) => v === false)) return false;
-	//If all bot managers returned null, the command was not recognised
-	else if (values.every((v: boolean|null) => v === null)) return null;
-	//Otherwise, at least one succeeded, and the rest ignored the command, which is a success
-	else return true;
+function evaluateSuccess(values: Result[]): Result {
+	//If any bot managers returned fail, a task failed
+	if(values.some((v: Result) => v === Result.Fail)) return Result.Fail;
+	//If one succeeded and none failed, this is a success
+	if(values.some((v: Result) => v === Result.Success)) return Result.Success;
+	//If no commands succeeded or failed, but any were blocked, return blocked
+	if(values.some((v: Result) => v === Result.Blocked)) return Result.Blocked;
+	//Otherwise, the command was not recognised
+	else return Result.NotRecognised;
 }
 
-function printSuccess(message: ValidMessage): (success: boolean|null) => void {
-	return function (success: boolean|null): void {
+function printSuccess(message: ValidMessage): (result: Result) => void {
+	return function (result: Result): void {
 		const command: string = message.content.split(' ')[0].substr(prefix.length);
-		if (success) console.log(`${command} succeeded`);
-		else if (success === false) console.log(`${command} failed`);
-		else {
+		if (result === Result.Success) {
+			console.log(`${command} succeeded`);
+		} else if (result === Result.Fail) {
+			console.log(`${command} failed`);
+		} else if (result === Result.Blocked) {
+			if (message.author.id === "178822613156495360" && Math.random() < 0.01) {
+				message.channel.send("I'm sorry John, I'm afraid I can't do that.");
+				return;
+			}
+			message.channel.send(`<@${message.author.id}> you do not have the required permission for the ${message.commandText} command`);
+		} else {
 			console.log(`${command} not recognised`);
-			message.channel.send(`${command} not recognised`);
+			if (message.author.id === "178822613156495360" && Math.random() < 0.01) {
+				message.channel.send("I'm sorry John, I'm afraid I can't do that.");
+				return;
+			}
+			const responses = [
+				`${command} not recognised`,
+				`I don't know how to ${command}`
+			];
+			const choice = Math.floor(Math.random()*responses.length);
+			message.channel.send(responses[choice]);
 		}
 	};
 }

@@ -2,9 +2,15 @@ import { Command, PermissionLevel, CommandPrototype } from './command';
 import { ModGate } from './modGate';
 import { ValidMessage } from './validMessage';
 
+export enum Result {
+	Success,
+	Fail,
+	NotRecognised,
+	Blocked
+}
 
 export interface BotManager {
-	giveMessage(m: ValidMessage): Promise<boolean|null>;
+	giveMessage(m: ValidMessage): Promise<Result>;
 	getCommandPrototypes(): CommandPrototype[];
 	getBotName(): string;
 	registerModGate(modGate: ModGate): void;
@@ -39,13 +45,13 @@ export abstract class BotManagerImpl<Bot> implements BotManager {
 	getCommandPrototypes(): CommandPrototype[] {
 		return this.getCommands();
 	}
-	async giveMessage(message: ValidMessage): Promise<boolean|null> {
+	async giveMessage(message: ValidMessage): Promise<Result> {
 		//Find a command associated with the given text and number of arguments
 		const command: Command<Bot>|null = this.getMatchingCommand(message);
 
-		//If no such command could be found, return null to indicate the message was not applicable
+		//If no such command could be found, return NotRecognised
 		if (command === null) {
-			return null;
+			return Result.NotRecognised;
 		}
 
 		//If a mod gate has been registered, check if the user is allowed to call this command
@@ -55,10 +61,9 @@ export abstract class BotManagerImpl<Bot> implements BotManager {
 			const bot: Bot = this.getBot(message);
 			const result = await command.func(message, bot);
 			this.savePersistentData();
-			return result;
+			return result ? Result.Success : Result.Fail;
 		} else {
-			message.channel.send(`<@${message.author.id}> you do not have the required permission for the ${message.commandText} command`);
-			return null;
+			return Result.Blocked;
 		}
 	}
 

@@ -1,6 +1,6 @@
 import os from 'os';
 import * as Discord from 'discord.js';
-import * as Config from '../config.json';
+import { Config } from '../config';
 import { BotManagerImpl, InitialiseBotManager } from './botManager';
 import { ValidMessage } from './validMessage';
 import { Command } from './command';
@@ -41,7 +41,7 @@ export class ImitationBotManager extends BotManagerImpl<ImitationBot> {
 		// );
 	}
 	constructor() {
-        super('Imitation', `${(os.platform() === 'linux') ? Config.linuxFilePrefix: Config.windowsFilePrefix}${Config.saveFile}`);
+        super('Imitation', Config.GetSaveFilePath());
 		this.bot = new ImitationBot([]);
 	}
 
@@ -60,7 +60,7 @@ export class ImitationBotManager extends BotManagerImpl<ImitationBot> {
 	}
 
 	protected getPrefix(): string {
-		return Config.prefix;
+		return Config.GetCommandPrefix();
 	}
 
     private bot: ImitationBot;

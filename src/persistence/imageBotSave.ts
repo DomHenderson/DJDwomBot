@@ -1,6 +1,7 @@
 export class ImageBotSaveData {
 	constructor(
-		public cache: SubredditCache[]
+		public cache: SubredditCache[],
+		public namedChannels: [string, string][]
 	) {}
 }
 

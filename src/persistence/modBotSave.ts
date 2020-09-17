@@ -9,7 +9,7 @@ export class ModBotSaveData {
 
 export class GuildModSaveData {
 	constructor(
-		public permissions: Map<CommandPrototype,PermissionLevel>,
+		public permissions: [CommandPrototype,PermissionLevel][],
 		public modRoles: string[],
 		public restrictedBots: string[]
 	) {}

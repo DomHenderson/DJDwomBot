@@ -1,5 +1,6 @@
+import os from 'os';
 import fs from 'fs';
-import * as Config from '../config.json';
+import { Config } from '../config';
 import { DJSaveData } from './djSave';
 import { ImageBotSaveData } from './imageBotSave';
 import { ModBotSaveData } from './modBotSave';
@@ -18,9 +19,10 @@ export class GuildSaveData<T> {
 }
 
 function GenericSave (updateSave: (s: Save) => void): void {
-	const save: Save = JSON.parse(fs.readFileSync(Config.saveFile, {encoding: 'utf8'}));
+	const fileName = Config.GetSaveFilePath();
+	const save: Save = JSON.parse(fs.readFileSync(fileName, {encoding: 'utf8'}));
 	updateSave(save);
-	fs.writeFileSync(Config.saveFile, JSON.stringify(save));
+	fs.writeFileSync(fileName, JSON.stringify(save));
 }
 
 export function DJSave (data: DJSaveData): void {GenericSave((s: Save) => {s.DJ = data;});}
