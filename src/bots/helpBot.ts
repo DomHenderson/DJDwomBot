@@ -62,7 +62,7 @@ class HelpBotImpl implements HelpBot {
 
 		collector.on('end', collected => {
 			sentMessage.delete();
-		}
+		});
 
 		try {
 			for(const b of botManagers) {
