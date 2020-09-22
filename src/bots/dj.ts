@@ -1,5 +1,6 @@
 import * as Discord from 'discord.js';
 import { Readable } from 'stream';
+import { threadId } from 'worker_threads';
 import ytdl from 'ytdl-core';
 import { MessageChannel } from '../botManagers/messageChannel';
 import { GuildDJSaveData } from '../persistence/djSave';
@@ -200,25 +201,25 @@ class DJImpl implements DJ {
 		return true;
 	}
 	skip(outputChannel: MessageChannel): boolean {
+		console.log('skipping');
 		if(this.songList.length === 0) {
 			outputChannel.send('No songs to skip');
 			return false;
 		} else if (this.songList.length === 1) {
+			console.log('skipping last song');
 			if(this.dispatcher) {
 				this.dispatcher.end();
 				this.dispatcher = null;
-			} else {
-				this.songList = [];
 			}
+			this.songList = [];
 			this.playbackStatus = PlaybackStatus.Stopped;
 			return this.getOut();
 		} else {
 			if(this.dispatcher) {
-				this.dispatcher.end();
+				this.dispatcher.destroy();
 				this.dispatcher = null;
-			} else {
-				this.songList.shift();
 			}
+			this.songList.shift();
 			return this.streamCurrentSong(outputChannel);
 		}
 	}

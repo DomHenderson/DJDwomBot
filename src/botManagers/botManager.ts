@@ -13,6 +13,7 @@ export interface BotManager {
 	giveMessage(m: ValidMessage): Promise<Result>;
 	getCommandPrototypes(): CommandPrototype[];
 	getBotName(): string;
+	getBotEmoji(): string;
 	registerModGate(modGate: ModGate): void;
 	loadPersistentData(): boolean;
 	getMatchingCommandPrototype(message: ValidMessage): CommandPrototype|null;
@@ -31,9 +32,11 @@ export function InitialiseBotManager<T extends BotManager>(
 export abstract class BotManagerImpl<Bot> implements BotManager {
 	constructor(
 		botName: string,
+		botEmoji: string,
 		saveLocation: string,
 	) {
 		this.botName = botName;
+		this.botEmoji = botEmoji;
 		this.saveLocation = saveLocation;
 	}
 	registerModGate(modGate: ModGate): void {
@@ -41,6 +44,9 @@ export abstract class BotManagerImpl<Bot> implements BotManager {
 	}
 	getBotName(): string {
 		return this.botName;
+	}
+	getBotEmoji(): string {
+		return this.botEmoji;
 	}
 	getCommandPrototypes(): CommandPrototype[] {
 		return this.getCommands();
@@ -103,6 +109,7 @@ export abstract class BotManagerImpl<Bot> implements BotManager {
 	}
 
 	private botName: string;
+	private botEmoji: string;
 	protected saveLocation: string;
 	protected modGate: ModGate|null = null;
 }

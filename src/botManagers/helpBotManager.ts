@@ -1,4 +1,3 @@
-import os from 'os';
 import { CreateHelpBot, HelpBot } from '../bots/helpBot';
 import { Config } from '../config';
 import { BotManager, BotManagerImpl } from './botManager';
@@ -22,7 +21,7 @@ export class HelpBotManager extends BotManagerImpl<HelpBot> {
 		return;
 	}
 	constructor(helpBot: HelpBot, botManagers: BotManager[]) {
-		super('Help', Config.GetSaveFilePath());
+		super('Help', '❓', Config.GetSaveFilePath());
 		this.helpBot = helpBot;
 		this.botManagers = [this, ...botManagers];
 	}

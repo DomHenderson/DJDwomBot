@@ -1,4 +1,3 @@
-import os from 'os';
 import * as Discord from 'discord.js';
 import fs from 'fs';
 import ytsr from 'ytsr';
@@ -45,7 +44,7 @@ export class DJBotManager extends BotManagerImpl<DJ> {
 		);
 	}
 	constructor() {
-		super('DJ', Config.GetSaveFilePath());
+		super('DJ', '🎵', Config.GetSaveFilePath());
 	}
 
 	protected getBot(message: ValidMessage): DJ {
@@ -78,8 +77,8 @@ const djCommands: Command<DJ>[] = [
 	new Command(['getin', 'getinlad'], getIn),
 	new Command(['getout', 'getoutlad'], getOut),
 	new Command(['add'], add, ['song'], 1),
-	new Command(['play'], play, [], 0, 0),
-	new Command(['play'], play, ['song'], 1),
+	new Command(['play'], startPlayback, [], 0, 0),
+	new Command(['play'], addSongAndPlay, ['song'], 1),
 	new Command(['pause'], pause),
 	new Command(['stop'], stop),
 	new Command(['skip'], skip),
@@ -117,6 +116,22 @@ async function getOut(message: ValidMessage, dj: DJ): Promise<boolean> {
 	return dj.getOut();
 }
 
+async function add(message: ValidMessage, dj: DJ): Promise<boolean> {
+	const args: string[] = message.content.split(' ').slice(1);
+	if(args.length === 0) {
+		message.channel.send('Add what?');
+		return false;
+	} else  {
+		const songChoices: Song[] | null = await findSongChoices(args);
+		if(songChoices === null) {
+			message.channel.send('Failed to find song');
+			return false;
+		}
+		chooseSong(message, songChoices, (song: Song) => {dj.addSong(song, message.channel)});
+		return true;
+	}
+}
+
 async function findSongChoices(args: string[]): Promise<Song[]|null> {
 	const result: ytsr.result = await ytsr(args.join(' '));
 	console.log(`Searching for ${args.join(' ')} produced:`);
@@ -139,70 +154,74 @@ async function findSongChoices(args: string[]): Promise<Song[]|null> {
 	}
 }
 
-async function chooseSong(message: ValidMessage, options: Song[]): Promise<Song|null> {
+async function chooseSong(message: ValidMessage, options: Song[], callback: (song: Song) => void): Promise<void> {
 	const songList: string = options
 		.map((song: Song, i: number) => `${i+1}. ${song.title} (${song.length}) by ${song.artist}`)
 		.join('\n');
 	const tag: string = `<@${message.author.id}>`;
-	message.channel.send(`${tag} Please choose a song (1-5):\n${songList}`);
-	const filter = (m: Discord.Message) => m.author.id === message.author.id;
-	return message.channel.awaitMessages(filter, {max: 1, time: 30000})
-		.then((collected: Discord.Collection<string, Discord.Message>) => {
-			const response: Discord.Message|undefined = collected.first();
-			if(response === undefined) {
-				message.channel.send('Failed to catch response');
-				return null;
-			}
-			const choice: number = parseInt(response.content);
-			if (!isNaN(choice)) {
-				if(choice < 1 || choice > 5) {
-					message.channel.send(`${choice} is not in the range 1-5`);
-					return null;
-				}
-				return options[choice-1];
-			} else {
-				return null;
-			}
-		})
-		.catch(() => {
-			return null;
-		});
+	const sentMessage: Discord.Message = await message.channel.send(`${tag} Please react with your song choice:\n${songList}`);
+	const validResponses: Map<string, Song|null> = new Map<string, Song|null>([
+		['1️⃣', options[0]],
+		['2️⃣', options[1]],
+		['3️⃣', options[2]],
+		['4️⃣', options[3]],
+		['5️⃣', options[4]],
+		['❌', null]
+	]);
+	const filter: Discord.CollectorFilter = (reaction, user) => {
+		return [...validResponses.keys()].includes(reaction.emoji.name) && user.id === message.author.id;
+	};
+
+	const collector = sentMessage.createReactionCollector(filter, { time: 15000 });
+
+	collector.on('collect', (reaction, user) => {
+		const song = validResponses.get(reaction.emoji.name);
+		if(song === null) {
+			sentMessage.delete();
+		} else if (song === undefined) {
+			console.log('ERROR: Undefined song selected');
+		} else {
+			callback(song);
+		}
+	});
+
+	collector.on('end', collected => {
+		sentMessage.delete();
+		console.log('collector ending')
+	});
+
+	try {
+		await sentMessage.react('1️⃣');
+		await sentMessage.react('2️⃣');
+		await sentMessage.react('3️⃣');
+		await sentMessage.react('4️⃣');
+		await sentMessage.react('5️⃣');
+		await sentMessage.react('❌');
+	} catch (e) {
+		console.log(e);
+	}
 }
 
-async function add(message: ValidMessage, dj:DJ): Promise<boolean> {
-	const args: string[] = message.content.split(' ').slice(1);
-	if(args.length === 0) {
-		message.channel.send('Add what?');
+async function addSongAndPlay(message: ValidMessage, dj: DJ) {
+	const args: string[] = message.args;
+
+	const songChoices: Song[]|null = await findSongChoices(args);
+	if(songChoices === null) {
+		message.channel.send('Failed to find song');
 		return false;
-	} else  {
-		const songChoices: Song[] | null = await findSongChoices(args);
-		if(songChoices === null) {
-			message.channel.send('Failed to find song');
-			return false;
-		}
-		const song: Song|null = await chooseSong(message, songChoices);
-		if(song === null) {
-			return false;
-		}
-		dj.addSong(song, message.channel);
-		return true;
 	}
+	chooseSong(
+		message,
+		songChoices,
+		(song: Song) => {
+			dj.addSong(song, message.channel);
+			startPlayback(message, dj);
+		}
+	);
+	return true;
 }
 
-async function play(message: ValidMessage, dj: DJ) {
-	const args: string[] = message.content.split(' ').slice(1);
-	if(args.length > 0) {
-		const songChoices: Song[]|null = await findSongChoices(args);
-		if(songChoices === null) {
-			message.channel.send('Failed to find song');
-			return false;
-		}
-		const song: Song|null = await chooseSong(message, songChoices);
-		if(song === null) {
-			return false;
-		}
-		dj.addSong(song, message.channel);
-	}
+async function startPlayback(message: ValidMessage, dj: DJ): Promise<boolean> {
 	if(dj.getCurrentVoiceChannel() === null) {
 		console.log('current voice channel is null');
 		const voiceChannel: Discord.VoiceChannel | null = message.author.voice.channel;

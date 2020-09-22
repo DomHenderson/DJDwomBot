@@ -1,4 +1,3 @@
-import os from 'os';
 import moment from 'moment';
 import fs from 'fs';
 import * as Discord from 'discord.js';
@@ -33,7 +32,7 @@ export class ImageBotManager extends BotManagerImpl<ImageBot> {
 		ImageBotSave(this.imBot.saveData());
 	}
 	constructor() {
-		super('Image', Config.GetSaveFilePath());
+		super('Image', '📷', Config.GetSaveFilePath());
 		this.imBot = CreateImageBot();
 	}
 

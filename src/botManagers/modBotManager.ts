@@ -1,4 +1,3 @@
-import os from 'os';
 import * as Discord from 'discord.js';
 import fs from 'fs';
 import { CreateModBot, ModBot } from '../bots/modBot';
@@ -96,7 +95,7 @@ export class ModBotManager extends BotManagerImpl<ModBot> implements ModGate {
 		);
 	}
 	constructor() {
-		super('Mod', Config.GetSaveFilePath());
+		super('Mod', '⚔️', Config.GetSaveFilePath());
 		this.botManagers = [this];
 	}
 	

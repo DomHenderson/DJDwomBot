@@ -1,4 +1,3 @@
-import os from 'os';
 import * as Discord from 'discord.js';
 import { Config } from '../config';
 import { BotManagerImpl, InitialiseBotManager } from './botManager';
@@ -41,7 +40,7 @@ export class ImitationBotManager extends BotManagerImpl<ImitationBot> {
 		// );
 	}
 	constructor() {
-        super('Imitation', Config.GetSaveFilePath());
+        super('Imitation', '👥', Config.GetSaveFilePath());
 		this.bot = new ImitationBot([]);
 	}
 
